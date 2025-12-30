@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 function ManagerDashboard() {
   const [username, setUsername] = useState('');
+  const [overdueBills, setOverdueBills] = useState([]);
+  const [showOverdueAlert, setShowOverdueAlert] = useState(false);
   const [stats, setStats] = useState({
     totalTables: 0,
     occupiedTables: 0,
@@ -12,12 +14,32 @@ function ManagerDashboard() {
 
   const navigate = useNavigate();
 
+  const fetchOverdueBills = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:8000/api/restaurant/bills/overdue/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success && data.count > 0) {
+        setOverdueBills(data.data);
+        setShowOverdueAlert(true);
+      }
+    } catch (error) {
+      console.error('Error fetching overdue bills:', error);
+    }
+  };
+
   useEffect(() => {
     const user = localStorage.getItem('username');
     setUsername(user || 'Manager');
     
     // Fetch stats from backend
     fetchManagerStats();
+    fetchOverdueBills(); 
   }, []);
 
   const fetchManagerStats = async () => {
@@ -145,6 +167,44 @@ function ManagerDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Overdue Bills Alert */}
+        {showOverdueAlert && overdueBills.length > 0 && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-8">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-4 flex-1">
+                <h3 className="text-lg font-bold text-red-800">⚠️ Overdue Bills Alert</h3>
+                <p className="text-red-600 mt-1">
+                  {overdueBills.length} {overdueBills.length === 1 ? 'bill has' : 'bills have'} been pending for more than 30 minutes
+                </p>
+                <div className="mt-4 space-y-2">
+                  {overdueBills.map((bill) => (
+                    <div key={bill.id} className="flex justify-between items-center bg-white rounded px-4 py-2">
+                      <div>
+                        <span className="font-semibold text-gray-800">{bill.table}</span>
+                        <span className="text-sm text-gray-600 ml-3">
+                          Pending: {bill.minutes_pending} minutes
+                        </span>
+                      </div>
+                      <span className="font-bold text-red-600">₹{bill.total_amount}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setShowOverdueAlert(false)}
+                  className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition"
+                >
+                  Dismiss Alert
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Management Sections */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

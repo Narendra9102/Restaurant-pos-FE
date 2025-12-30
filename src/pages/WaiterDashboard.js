@@ -60,6 +60,8 @@ function WaiterDashboard() {
         return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'Bill Requested':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Closed':
+        return 'bg-gray-400 text-white border-gray-500';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -149,7 +151,7 @@ function WaiterDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-800">Table Overview</h2>
-            <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
+            <button onClick={() => navigate(`/waiter/create-order`)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
               Create New Order
             </button>
           </div>
@@ -187,8 +189,8 @@ function WaiterDashboard() {
                     </>
                   )}
                   {table.status === 'Bill Requested' && (
-                    <button className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition">
-                      View Bill
+                    <button onClick={() => navigate(`/waiter/orders/${table.id}`)} className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition">
+                      Bill Pending
                     </button>
                   )}
                 </div>

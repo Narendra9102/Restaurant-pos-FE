@@ -109,6 +109,35 @@ function ViewOrders() {
     navigate('/waiter-dashboard');
   };
 
+  const handleRequestBill = async () => {
+    if (!window.confirm('Request bill for this table?')) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Update table status to "Bill Requested"
+        const response = await fetch(`http://localhost:8000/api/restaurant/tables/update/${tableId}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'Bill Requested' })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+        alert('Bill requested successfully! Cashier will process it.');
+        handleBack();
+        } else {
+        alert(data.message || 'Failed to request bill');
+        }
+    } catch (err) {
+        alert('Connection error');
+    }
+    };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Placed':
@@ -209,61 +238,110 @@ function ViewOrders() {
 
             {/* Orders List */}
             {orders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg shadow p-6">
+            <div key={order.id} className="bg-white rounded-lg shadow p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
-                  <div>
+                <div>
                     <h3 className="text-lg font-bold text-gray-800">Order #{order.id}</h3>
                     <p className="text-sm text-gray-600">
-                      {new Date(order.created_at).toLocaleString()}
+                    {new Date(order.created_at).toLocaleString()}
                     </p>
-                  </div>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border mt-2 sm:mt-0 ${getStatusColor(order.status)}`}>
+                </div>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(order.status)}`}>
                     {order.status}
-                  </span>
+                    </span>
+                    {order.is_billed && (
+                    <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                        Billed
+                    </span>
+                    )}
+                </div>
                 </div>
 
                 {/* Order Items */}
                 <div className="mb-4">
-                  <h4 className="font-semibold text-gray-700 mb-2">Items:</h4>
-                  <div className="space-y-2">
+                <h4 className="font-semibold text-gray-700 mb-2">Items:</h4>
+                <div className="space-y-2">
                     {order.items && order.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-800">{item.menu_item}</p>
-                          <p className="text-sm text-gray-600">₹{item.price} each</p>
+                        <p className="font-medium text-gray-800">{item.menu_item}</p>
+                        <p className="text-sm text-gray-600">₹{item.price} each</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-gray-800">Qty: {item.quantity}</p>
-                          <p className="text-sm text-emerald-600">₹{item.subtotal}</p>
+                        <p className="font-semibold text-gray-800">Qty: {item.quantity}</p>
+                        <p className="text-sm text-emerald-600">₹{item.subtotal}</p>
                         </div>
-                      </div>
+                    </div>
                     ))}
-                  </div>
+                </div>
                 </div>
 
                 {/* Total */}
                 <div className="border-t pt-4 mb-4">
-                  <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-800">Total:</span>
                     <span className="text-2xl font-bold text-emerald-600">₹{order.total_amount}</span>
-                  </div>
+                </div>
                 </div>
 
-                {/* Update Status Button */}
-                {getNextStatus(order.status) && (
-                  <button
+                {/* Update Status Button - Only show if not billed and has next status */}
+                {!order.is_billed && getNextStatus(order.status) && (
+                <button
                     onClick={() => handleUpdateStatus(order.id, getNextStatus(order.status))}
                     disabled={updatingOrder === order.id}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                >
                     {updatingOrder === order.id
-                      ? 'Updating...'
-                      : `Mark as ${getNextStatus(order.status)}`
+                    ? 'Updating...'
+                    : `Mark as ${getNextStatus(order.status)}`
                     }
-                  </button>
+                </button>
                 )}
-              </div>
+
+                {/* Already Billed Message */}
+                {order.is_billed && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                    <p className="text-purple-800 font-semibold">This order has been billed</p>
+                </div>
+                )}
+            </div>
             ))}
+
+            {/* Request Bill Button - Moved outside the map, shown once */}
+            {orders.length > 0 && 
+            orders.every(o => o.status === 'Served' && !o.is_billed) &&
+            tableInfo?.status !== 'Bill Requested' &&
+            (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                <div>
+                    <h3 className="text-lg font-bold text-blue-800">All Orders Served!</h3>
+                    <p className="text-sm text-blue-600">Ready to request bill for this table</p>
+                </div>
+                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                </div>
+                <button
+                onClick={handleRequestBill}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
+                >
+                Request Bill
+                </button>
+            </div>
+            )}
+
+            {/* Bill Already Requested Message */}
+            {tableInfo?.status === 'Bill Requested' && (
+            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center">
+                <svg className="w-12 h-12 text-green-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-lg font-bold text-green-800 mb-2">Bill Requested</h3>
+                <p className="text-green-600">Cashier will process the bill shortly</p>
+            </div>
+            )}
           </div>
         )}
       </main>
