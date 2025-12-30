@@ -17,6 +17,10 @@ import CreateMenuItem from './pages/CreateMenuItem';
 import ManageMenu from './pages/ManageMenu';
 import CreateOrder from './pages/CreateOrder';
 import ManageMembers from './pages/ManageMembers';
+import ViewOrders from './pages/ViewOrders';
+import GenerateBill from './pages/GenerateBill';
+import PendingBills from './pages/PendingBills';
+import ViewBill from './pages/ViewBill';
 
 function App() {
   return (
@@ -44,14 +48,14 @@ function App() {
         {/* Protected Routes - Waiter (role_id: 3) */}
         <Route path="/waiter-dashboard" element={<ProtectedRoute allowedRoles={[3]}><WaiterDashboard /></ProtectedRoute>} />
         <Route path="/waiter/create-order" element={<ProtectedRoute allowedRoles={[3]}><CreateOrder /></ProtectedRoute>} />
-        {/* <Route path="/waiter/orders/:tableId" element={<ProtectedRoute allowedRoles={[3]}><ViewOrders /></ProtectedRoute>} /> */}
+        <Route path="/waiter/orders/:tableId" element={<ProtectedRoute allowedRoles={[3]}><ViewOrders /></ProtectedRoute>} />
 
 
         {/* Protected Routes - Cashier (role_id: 4) */}
         <Route path="/cashier-dashboard" element={<ProtectedRoute allowedRoles={[4]}><CashierDashboard /></ProtectedRoute>} />
-        {/* <Route path="/cashier/generate-bill/:tableId" element={<ProtectedRoute allowedRoles={[4]}><GenerateBill /></ProtectedRoute>} />
-        <Route path="/cashier/bills" element={<ProtectedRoute allowedRoles={[4]}><PendingBills /></ProtectedRoute>} /> */}
-
+        <Route path="/cashier/generate-bill/:tableId" element={<ProtectedRoute allowedRoles={[4]}><GenerateBill /></ProtectedRoute>} />
+        <Route path="/cashier/bills" element={<ProtectedRoute allowedRoles={[4]}><PendingBills /></ProtectedRoute>} />
+        <Route path="/cashier/bill/:billId" element={<ViewBill />} />
 
         {/* 404 - Page Not Found */}
         <Route

@@ -3,16 +3,15 @@ import { useNavigate } from 'react-router-dom';
 
 function CashierDashboard() {
   const [username, setUsername] = useState('');
-  const [pendingBills, setPendingBills] = useState([
-    { id: 1, tableNumber: 'T-02', amount: 1250, items: 5, time: '15 mins ago' },
-    { id: 2, tableNumber: 'T-05', amount: 2800, items: 8, time: '5 mins ago' },
-    { id: 3, tableNumber: 'T-08', amount: 890, items: 3, time: '2 mins ago' },
-  ]);
+  const [pendingBills, setPendingBills] = useState([]);
+  const [tablesReadyForBill, setTablesReadyForBill] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [stats, setStats] = useState({
-    todayRevenue: 15420,
-    billsPending: 3,
-    billsPaid: 12,
-    totalBills: 15
+    todayRevenue: 0,
+    billsPending: 0,
+    billsPaid: 0,
+    totalBills: 0
   });
 
   const navigate = useNavigate();
@@ -20,15 +19,155 @@ function CashierDashboard() {
   useEffect(() => {
     const user = localStorage.getItem('username');
     setUsername(user || 'Cashier');
-    
-    // Fetch bills and stats from backend
-    // fetchPendingBills();
-    // fetchStats();
+
+    fetchCashierStats();
+    fetchTablesReadyForBill(); 
+    fetchPendingBills();
   }, []);
+
+  const fetchCashierStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/restaurant/cashier/stats/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      console.log("Cash Revenue details:", data)
+
+      if (response.ok && data.success) {
+        setStats({
+          todayRevenue: data.data.today_revenue,
+          billsPending: data.data.bills_pending,
+          billsPaid: data.data.bills_paid,
+          totalBills: data.data.total_bills
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  };
+
+  // Fetch tables with served orders (no bill yet)
+  const fetchTablesReadyForBill = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/restaurant/tables/ready-for-bill/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setTablesReadyForBill(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching tables ready for bill:', err);
+    }
+  };
+
+  const fetchPendingBills = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/restaurant/bills/pending/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setPendingBills(data.data);
+        
+        // Calculate stats from bills
+        const pendingCount = data.data.length;
+        
+        setStats((prevStats) => ({
+          ...prevStats,
+          billsPending: pendingCount,
+        }));
+      } else {
+        setError(data.message || 'Failed to fetch bills');
+        setPendingBills([]);
+      }
+    } catch (err) {
+      setError('Connection error. Please try again.');
+      setPendingBills([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     navigate('/login', { replace: true });
+  };
+
+  const getTimeSince = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return date.toLocaleDateString();
+  };
+
+  const extractTableId = (tableName) => {
+    // Extract numeric ID from table name like "T-02" or get from bill data
+    const match = tableName.match(/\d+/);
+    return match ? match[0] : null;
+  };
+
+  const handleGenerateBill = (tableId) => {
+    navigate(`/cashier/generate-bill/${tableId}`);
+  };
+
+  const handleViewAllBills = () => {
+    navigate('/cashier/bills');
+  };
+
+  const handleQuickPay = async (billId, tableNumber) => {
+    if (!window.confirm(`Mark bill for ${tableNumber} as paid?`)) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/restaurant/bills/mark-paid/${billId}/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('Payment successful! Table is now available.');
+        fetchPendingBills(); // Refresh the list
+        fetchCashierStats();
+      } else {
+        alert(data.message || 'Failed to mark as paid');
+      }
+    } catch (err) {
+      alert('Connection error. Please try again.');
+    }
+  };
+
+  const handleRefreshAll = () => {
+    fetchCashierStats();
+    fetchTablesReadyForBill();
+    fetchPendingBills();
   };
 
   return (
@@ -48,12 +187,23 @@ function CashierDashboard() {
                 <p className="text-sm text-gray-500">Welcome, {username}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefreshAll}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+                title="Refresh"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -119,50 +269,175 @@ function CashierDashboard() {
           </div>
         </div>
 
-        {/* Pending Bills */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">Pending Bills</h2>
-            <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-semibold">
-              {pendingBills.length} Pending
-            </span>
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-lg shadow p-12 text-center mb-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading pending bills...</p>
           </div>
+        )}
 
-          <div className="space-y-4">
-            {pendingBills.map((bill) => (
-              <div
-                key={bill.id}
-                className="border rounded-lg p-4 hover:shadow-md transition"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-800">{bill.tableNumber}</h3>
-                    <p className="text-sm text-gray-600">{bill.items} items • {bill.time}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-emerald-600">₹{bill.amount}</p>
-                  </div>
-                </div>
+        {/* Error State */}
+        {!loading && error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center">
+              <svg className="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-red-800 font-semibold">Error Loading Bills</p>
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            </div>
+            <button
+              onClick={fetchPendingBills}
+              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
-                <div className="flex space-x-2">
-                  <button className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
+        {/* NEW SECTION - Tables Ready for Billing */}
+        {!loading && !error && tablesReadyForBill.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Ready for Billing</h2>
+                <p className="text-sm text-gray-600">Tables with served orders waiting for bill generation</p>
+              </div>
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                {tablesReadyForBill.length} {tablesReadyForBill.length === 1 ? 'Table' : 'Tables'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tablesReadyForBill.map((table) => (
+                <div
+                  key={table.table_id}
+                  className="border-2 border-green-200 bg-green-50 rounded-lg p-5 hover:shadow-md transition"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800">{table.table_number}</h3>
+                      <p className="text-sm text-gray-600">{table.seating_capacity} seats</p>
+                      <p className="text-xs text-gray-500 mt-1">{table.orders_count} served {table.orders_count === 1 ? 'order' : 'orders'}</p>
+                    </div>
+                    <span className="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-semibold">
+                      Ready
+                    </span>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">Estimated Total</p>
+                    <p className="text-2xl font-bold text-emerald-600">≈ ₹{table.total_amount}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleGenerateBill(table.table_id)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition"
+                  >
                     Generate Bill
                   </button>
-                  <button className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
-                    View Details
-                  </button>
-                  <button className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition">
-                    Print
-                  </button>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Pending Bills */}
+        {!loading && !error && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Pending Bills</h2>
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-semibold">
+                  {pendingBills.length} Pending
+                </span>
+                <button
+                  onClick={handleViewAllBills}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+                >
+                  View All
+                </button>
+              </div>
+            </div>
+
+            {pendingBills.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xl text-gray-600 mb-2">All Clear!</p>
+                <p className="text-gray-500">No pending bills at the moment</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingBills.map((bill) => {
+                  const tableId = extractTableId(bill.table);
+                  
+                  return (
+                    <div
+                      key={bill.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-gray-800">{bill.table}</h3>
+                            <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">
+                              {bill.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Bill #{bill.id} • Generated {getTimeSince(bill.generated_at)}
+                          </p>
+                          <p className="text-xs text-gray-500">{new Date(bill.generated_at).toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-emerald-600">₹{bill.total_amount}</p>
+                          <p className="text-xs text-gray-600">
+                            Subtotal: ₹{bill.subtotal} + Tax: ₹{bill.tax_amount}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {tableId && (
+                          <button
+                            onClick={() => navigate(`/cashier/bill/${bill.id}`)}
+                            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+                          >
+                            View Details
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleQuickPay(bill.id, bill.table)}
+                          className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+                        >
+                          Mark as Paid
+                        </button>
+                        <button
+                          onClick={() => window.print()}
+                          className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition"
+                        >
+                          Print
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer">
+          <div
+            onClick={handleViewAllBills}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+          >
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
