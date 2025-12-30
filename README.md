@@ -84,17 +84,3 @@ Frontend runs at `http://localhost:3000`
 | Waiter  | waiter1  | waiter123  |
 | Cashier | cashier1 | cashier123 |
 
----
-
-## Notes / Assumptions
-
-* Backend must be running before frontend
-* Only Admin can create staff users
-* No public registration
-
-
-If you want, I can **also write a professional “README explanation for the signals and workflow”** that you can **copy into backend README**, which really impresses reviewers.  
-
-Do you want me to do that next?
-```
-
