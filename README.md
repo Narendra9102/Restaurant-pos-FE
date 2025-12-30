@@ -1,70 +1,100 @@
-# Getting Started with Create React App
+# Restaurant POS System – Frontend (React + Tailwind CSS)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
+This repository contains the frontend of the Restaurant POS system built using **React** and **Tailwind CSS**.  
 
-## Available Scripts
+It communicates with the Django backend via REST APIs and provides **role-based dashboards** for:
+- Manager
+- Waiter
+- Cashier
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## Tech Stack
+- React (CRA)  
+- Tailwind CSS  
+- React Router  
+- Fetch API / Axios  
+- JWT Authentication  
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Features
+- Login page with role-based redirection
+- Manager dashboard: tables & menu management
+- Waiter dashboard: order management
+- Cashier dashboard: billing management
+- Responsive layout for mobile, tablet, and desktop
+- Token-based API requests to backend
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Setup Instructions
 
-### `npm run build`
+### 1️. Clone repository
+```bash
+git clone <frontend-repo-url>
+cd restaurant-pos-frontend
+````
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 2️. Install dependencies
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 3️. Configure API Base URL
 
-### `npm run eject`
+By default, API points to:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```js
+const API_BASE_URL = "http://localhost:8000";
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Change if your backend runs elsewhere.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 4️. Start Frontend
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm start
+```
 
-## Learn More
+Frontend runs at `http://localhost:3000`
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Login Flow
 
-### Code Splitting
+1. Users log in using credentials created by Admin (superuser)
+2. JWT token stored in localStorage
+3. Role-based redirection:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+   * Manager → `/manager-dashboard`
+   * Waiter → `/waiter-dashboard`
+   * Cashier → `/cashier-dashboard`
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Demo Credentials
 
-### Making a Progressive Web App
+| Role    | Username | Password   |
+| ------- | -------- | ---------- |
+| Admin   | admin    | admin123   |
+| Manager | manager1 | manager123 |
+| Waiter  | waiter1  | waiter123  |
+| Cashier | cashier1 | cashier123 |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## Notes / Assumptions
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+* Backend must be running before frontend
+* Only Admin can create staff users
+* No public registration
 
-### Deployment
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+If you want, I can **also write a professional “README explanation for the signals and workflow”** that you can **copy into backend README**, which really impresses reviewers.  
 
-### `npm run build` fails to minify
+Do you want me to do that next?
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
